@@ -42,7 +42,7 @@
 
 #define USB_OUTPUT_BUFFER_SIZE 2000
 
-const uint16_t SAMPLES_PER_DATA_TRANSFER = 3;
+const uint16_t SAMPLES_PER_DATA_TRANSFER = 800;
 
 /* USER CODE END PM */
 
@@ -326,46 +326,53 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
-    // uint16_t adc_output;
-
-    for (int i = 0; i < 800; ++i)
-    {
-        write_next_two_byte_value_into_buffer(sin_values[i]);
-    }
-    write_end_sequence_into_buffer();
-
+    uint16_t adc_output;
+    /*
+        for (int i = 0; i < 800; ++i)
+        {
+            write_next_two_byte_value_into_buffer(sin_values[i]);
+        }
+        write_end_sequence_into_buffer();
+    */
     HAL_ADC_Start(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-        /*
+    while (1)
+    {
+
         if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
         {
             adc_output = HAL_ADC_GetValue(&hadc1);
 
-            write_next_two_byte_value_into_buffer(adc_output);
+            if (adc_output != 0xff0a)
+            {
+                write_next_two_byte_value_into_buffer(adc_output);
+            }
+            else
+            {
+                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+            }
 
             HAL_ADC_Start(&hadc1);
+            HAL_Delay(1);
         }
         else
         {
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
         }
 
         if (time_to_transfer_data())
         {
             write_end_sequence_into_buffer();
-            */
-        CDC_Transmit_FS(usb_output_buffer, buffer_index);
 
-        // buffer_index = 0;
+            CDC_Transmit_FS(usb_output_buffer, buffer_index);
+            HAL_Delay(100);
+            buffer_index = 0;
 
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
-        HAL_Delay(100);
-        //}
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
+        }
 
     /* USER CODE END WHILE */
 
