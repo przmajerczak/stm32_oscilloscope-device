@@ -8,4 +8,5 @@ INTERFACE
 2.0 The device sends 800 conversion results during one transmission.
     Less significant byte is sent first, followed by more significant one.
     After all 1600 bytes of results comes end sequence, consisting of 
-    0xa ('\n') and 0xff.
+    0xa ('\n') and 0xff. ADC measurement occurs every 125 µs, resulting in
+    sampling frequency of 8 kHz.

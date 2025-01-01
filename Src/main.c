@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "tim.h"
 #include "usb_device.h"
 #include "gpio.h"
 
@@ -259,6 +260,9 @@ const uint16_t pulse_values[800] = {
     4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096,
     4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096,
     4096, 4096, 4096, 4096, 4096, 4096, 4096, 0};
+
+int data_ready_for_transfer_flag = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -292,6 +296,19 @@ uint8_t time_to_transfer_data()
     return buffer_index == (2 * SAMPLES_PER_DATA_TRANSFER);
 }
 
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    if (data_ready_for_transfer_flag == 0)
+    {
+        write_next_two_byte_value_into_buffer(HAL_ADC_GetValue(hadc));
+    }
+
+    if (time_to_transfer_data())
+    {
+        data_ready_for_transfer_flag = 1;
+    }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -320,13 +337,13 @@ int main(void)
 
   /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USB_DEVICE_Init();
-  MX_ADC1_Init();
-  /* USER CODE BEGIN 2 */
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_USB_DEVICE_Init();
+    MX_ADC1_Init();
+    MX_TIM3_Init();
+    /* USER CODE BEGIN 2 */
 
-    uint16_t adc_output;
     /*
         for (int i = 0; i < 800; ++i)
         {
@@ -334,44 +351,30 @@ int main(void)
         }
         write_end_sequence_into_buffer();
     */
-    HAL_ADC_Start(&hadc1);
-  /* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+    // Timer3 tick every 125 µs - full buffer every 100 ms
+    htim3.Init.Prescaler = 0;
+    htim3.Init.Period = 10499;
+
+    HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
+    HAL_ADC_Start_IT(&hadc1);   // Start ADC Conversion
+                                /* USER CODE END 2 */
+
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
     while (1)
     {
-
-        if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-        {
-            adc_output = HAL_ADC_GetValue(&hadc1);
-
-            if (adc_output != 0xff0a)
-            {
-                write_next_two_byte_value_into_buffer(adc_output);
-            }
-            else
-            {
-                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
-            }
-
-            HAL_ADC_Start(&hadc1);
-            HAL_Delay(1);
-        }
-        else
-        {
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
-        }
-
-        if (time_to_transfer_data())
+        if (data_ready_for_transfer_flag == 1)
         {
             write_end_sequence_into_buffer();
 
             CDC_Transmit_FS(usb_output_buffer, buffer_index);
-            HAL_Delay(100);
+
             buffer_index = 0;
 
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+
+            data_ready_for_transfer_flag = 0;
         }
 
     /* USER CODE END WHILE */
