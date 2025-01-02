@@ -53,6 +53,7 @@ const uint16_t SAMPLES_PER_DATA_TRANSFER = 800;
 
 uint8_t usb_output_buffer[USB_OUTPUT_BUFFER_SIZE];
 volatile uint16_t buffer_index = 0;
+uint32_t measurements_period = 0;
 
 const uint16_t sin_values[800] = {
     2128, 2209, 2289, 2368, 2448, 2526, 2604, 2681, 2757, 2832, 2905, 2978,
@@ -279,6 +280,14 @@ void write_next_byte_into_buffer(const uint16_t byte)
     usb_output_buffer[buffer_index++] = byte;
 }
 
+void write_next_four_byte_value_into_buffer(const uint32_t value)
+{
+    write_next_byte_into_buffer(value & 0xff);
+    write_next_byte_into_buffer((value >> 8) & 0xff);
+    write_next_byte_into_buffer((value >> 16) & 0xff);
+    write_next_byte_into_buffer((value >> 24) & 0xff);
+}
+
 void write_next_two_byte_value_into_buffer(const uint16_t value)
 {
     write_next_byte_into_buffer(value & 0xff);
@@ -306,6 +315,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
     if (time_to_transfer_data())
     {
         data_ready_for_transfer_flag = 1;
+        measurements_period = TIM2->CNT;
     }
 }
 
@@ -342,6 +352,7 @@ int main(void)
     MX_USB_DEVICE_Init();
     MX_ADC1_Init();
     MX_TIM3_Init();
+    MX_TIM2_Init();
     /* USER CODE BEGIN 2 */
 
     /*
@@ -356,6 +367,7 @@ int main(void)
     htim3.Init.Prescaler = 0;
     htim3.Init.Period = 10499;
 
+    HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
     HAL_ADC_Start_IT(&hadc1);   // Start ADC Conversion
                                 /* USER CODE END 2 */
@@ -366,14 +378,16 @@ int main(void)
     {
         if (data_ready_for_transfer_flag == 1)
         {
+            write_next_four_byte_value_into_buffer(measurements_period);
             write_end_sequence_into_buffer();
 
-            CDC_Transmit_FS(usb_output_buffer, buffer_index);
+            CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
 
             buffer_index = 0;
 
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
 
+            TIM2->CNT = 0;
             data_ready_for_transfer_flag = 0;
         }
 
