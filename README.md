@@ -19,3 +19,5 @@ INTERFACE
     the last measurement contained in transmission. That value is followed by
     end sequence, consisting of 0xa ('\n') and 0xff.
     ADC measurement occurs every 125 µs, resulting in sampling frequency of 8 kHz.
+
+2.2 Same as 2.1, but end sequence is 0xff 0xff instead of 0xa 0xff.

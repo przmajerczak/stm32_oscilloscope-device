@@ -89,7 +89,7 @@ void write_next_two_byte_value_into_buffer(const uint16_t value)
 
 void write_end_sequence_into_buffer(void)
 {
-    write_next_byte_into_buffer('\n');
+    write_next_byte_into_buffer(0xff);
     write_next_byte_into_buffer(0xff);
 }
 
