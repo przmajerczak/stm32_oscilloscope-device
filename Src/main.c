@@ -41,9 +41,9 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-#define USB_OUTPUT_BUFFER_SIZE 2000
+#define USB_OUTPUT_BUFFER_SIZE 20100
 
-const uint16_t SAMPLES_PER_DATA_TRANSFER = 800;
+const uint16_t SAMPLES_PER_DATA_TRANSFER = 10000;
 
 /* USER CODE END PM */
 
@@ -148,9 +148,9 @@ int main(void)
     MX_TIM2_Init();
     /* USER CODE BEGIN 2 */
 
-    // Timer3 tick every 125 µs - full buffer every 100 ms
+    // Timer3 tick every 10 µs - full buffer every 100 ms
     htim3.Init.Prescaler = 0;
-    htim3.Init.Period = 10499;
+    htim3.Init.Period = 839;
 
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)

@@ -21,3 +21,12 @@ INTERFACE
     ADC measurement occurs every 125 µs, resulting in sampling frequency of 8 kHz.
 
 2.2 Same as 2.1, but end sequence is 0xff 0xff instead of 0xa 0xff.
+
+2.3 The device sends 10000 conversion results during one transmission.
+    Less significant byte is sent first, followed by more significant one.
+    After all 20000 bytes of results comes 4 bytes of the timer value,
+    arranged least significant byte first. The value represents count of
+    168 MHz timer ticks since the moment of first measurement until
+    the last measurement contained in transmission. That value is followed by
+    end sequence, consisting of two 0xff values.
+    ADC measurement occurs every 10 µs, resulting in sampling frequency of 100 kHz.
