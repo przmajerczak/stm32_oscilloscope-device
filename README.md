@@ -30,3 +30,8 @@ INTERFACE
     the last measurement contained in transmission. That value is followed by
     end sequence, consisting of two 0xff values.
     ADC measurement occurs every 10 µs, resulting in sampling frequency of 100 kHz.
+
+OTHER
+
+There is reference square wave generated on G2 and G3 pins, basing on timer 4.
+G2 frequency is 500 kHz, G3 frequency is 2.5 kHz

@@ -140,13 +140,14 @@ int main(void)
 
   /* USER CODE END SysInit */
 
-    /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_USB_DEVICE_Init();
-    MX_ADC1_Init();
-    MX_TIM3_Init();
-    MX_TIM2_Init();
-    /* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USB_DEVICE_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_TIM2_Init();
+  MX_TIM4_Init();
+  /* USER CODE BEGIN 2 */
 
     // Timer3 tick every 10 µs - full buffer every 100 ms
     htim3.Init.Prescaler = 0;
@@ -154,11 +155,12 @@ int main(void)
 
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
+    HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
     HAL_ADC_Start_IT(&hadc1);   // Start ADC Conversion
-                                /* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
     while (1)
     {
         if (data_ready_for_transfer_flag == 1)
