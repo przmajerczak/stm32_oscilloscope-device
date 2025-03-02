@@ -41,9 +41,15 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-#define USB_OUTPUT_BUFFER_SIZE 20100
+#define USB_OUTPUT_BUFFER_SIZE 0xffff
 
-const uint16_t SAMPLES_PER_DATA_TRANSFER = 10000;
+const uint16_t BYTES_PER_SAMPLE = 2;
+
+const uint16_t MEASUREMENT_PERIOD_BYTES = 4;
+const uint16_t END_SEQUENCE_BYTES = 2;
+const uint16_t METADATA_BYTES = MEASUREMENT_PERIOD_BYTES + END_SEQUENCE_BYTES;
+
+const uint16_t SAMPLES_PER_DATA_TRANSFER = ((USB_OUTPUT_BUFFER_SIZE / 2) - (BYTES_PER_SAMPLE * METADATA_BYTES));
 
 /* USER CODE END PM */
 
@@ -149,7 +155,7 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
-    // Timer3 tick every 10 µs - full buffer every 100 ms
+    // Timer3 tick every 10 µs - full buffer every ~327,5 ms
     htim3.Init.Prescaler = 0;
     htim3.Init.Period = 839;
 
