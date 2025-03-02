@@ -165,6 +165,7 @@ int main(void)
     {
         if (data_ready_for_transfer_flag == 1)
         {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
             write_next_four_byte_value_into_buffer(measurements_period);
             write_end_sequence_into_buffer();
 
@@ -172,10 +173,9 @@ int main(void)
 
             buffer_index = 0;
 
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-
             TIM2->CNT = 0;
             data_ready_for_transfer_flag = 0;
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
         }
 
     /* USER CODE END WHILE */
