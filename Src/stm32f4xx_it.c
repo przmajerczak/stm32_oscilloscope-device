@@ -224,23 +224,27 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 
-  
-
-  /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
-  /* USER CODE BEGIN TIM4_IRQn 1 */
+  // Faster than standard HAL_TIM_IRQHandler
+  __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
 
   // Toggles every 1 us - period is 2 us, resulting in frequency of 0.5 MHz = 500 kHz
   HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_2);
 
-
   // Toggles every 200 us- period is 400 us, resulting in frequency of 2.5 kHz
-  if (G3_pin_counter >= G3_PIN_PRESCALER)
+  if (G3_pin_counter >= G3_PIN_PRESCALER - 1)
   {
     G3_pin_counter = 0;
     HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_3);
   }
   ++G3_pin_counter;
+
+  // dirty trick to use above __HAL_TIM_CLEAR_IT instead of below HAL_TIM_IRQHandler
+  return;
+
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
 
   /* USER CODE END TIM4_IRQn 1 */
 }
