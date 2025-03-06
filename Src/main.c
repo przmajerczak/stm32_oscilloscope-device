@@ -61,8 +61,7 @@ uint32_t measurements_period = 0;
 
 int data_ready_for_transfer_flag = 0;
 
-// TODO: add a switch to control this parameter
-const int USE_DMA_OVER_INTERRUPTS_FOR_ADC = 1;
+int USE_DMA_OVER_INTERRUPTS_FOR_ADC = 1;
 
 /* USER CODE END PV */
 
@@ -105,11 +104,27 @@ uint8_t time_to_transfer_data()
     return buffer_index == (2 * SAMPLES_PER_DATA_TRANSFER);
 }
 
+void switchAdcRangeIfNeeded()
+{
+    if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11))
+    {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 1);
+        // USE_DMA_OVER_INTERRUPTS_FOR_ADC = 1;
+    }
+    else
+    {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
+        // USE_DMA_OVER_INTERRUPTS_FOR_ADC = 0;
+    }
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     if (USE_DMA_OVER_INTERRUPTS_FOR_ADC)
     {
         HAL_ADC_Stop_DMA(&hadc1);
+        switchAdcRangeIfNeeded();
+
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
         measurements_period = TIM2->CNT;
 
@@ -138,8 +153,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 
         if (time_to_transfer_data())
         {
-            data_ready_for_transfer_flag = 1;
             measurements_period = TIM2->CNT;
+            data_ready_for_transfer_flag = 1;
+            switchAdcRangeIfNeeded();
         }
     }
 }
