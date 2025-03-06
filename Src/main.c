@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "tim.h"
 #include "usb_device.h"
 #include "gpio.h"
@@ -52,13 +53,16 @@ const uint16_t SAMPLES_PER_DATA_TRANSFER = 10000;
 /* USER CODE BEGIN PV */
 
 uint8_t usb_output_buffer[USB_OUTPUT_BUFFER_SIZE];
+
+uint16_t dma_buffer[2 * USB_OUTPUT_BUFFER_SIZE];
+
 volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
 
 int data_ready_for_transfer_flag = 0;
 
 // TODO: add a switch to control this parameter
-const int USE_DMA_OVER_INTERRUPTS_FOR_ADC = 0;
+const int USE_DMA_OVER_INTERRUPTS_FOR_ADC = 1;
 
 /* USER CODE END PV */
 
@@ -105,6 +109,25 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     if (USE_DMA_OVER_INTERRUPTS_FOR_ADC)
     {
+        HAL_ADC_Stop_DMA(&hadc1);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+        measurements_period = TIM2->CNT;
+
+        for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; ++sample_idx)
+        {
+            write_next_two_byte_value_into_buffer(dma_buffer[sample_idx]);
+        }
+
+        write_next_four_byte_value_into_buffer(measurements_period);
+        write_end_sequence_into_buffer();
+
+        CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+
+        buffer_index = 0;
+
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+        HAL_ADC_Start_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
+        TIM2->CNT = 0;
     }
     else
     {
@@ -151,6 +174,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USB_DEVICE_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
@@ -161,17 +185,20 @@ int main(void)
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
 
+    // Timer3 tick every 10 µs - full buffer every 100 ms
+    htim3.Init.Prescaler = 0;
+    htim3.Init.Period = 839;
+
+    // TODO: make timer needed only for non-DMA mode
+    HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
+
     if (USE_DMA_OVER_INTERRUPTS_FOR_ADC)
     {
+        HAL_ADC_Start_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
     }
     else
     {
-        // Timer3 tick every 10 µs - full buffer every 100 ms
-        htim3.Init.Prescaler = 0;
-        htim3.Init.Period = 839;
-
-        HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
-        HAL_ADC_Start_IT(&hadc1);   // Start ADC Conversion
+        HAL_ADC_Start_IT(&hadc1);
     }
     /* USER CODE END 2 */
 
