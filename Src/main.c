@@ -57,6 +57,9 @@ uint32_t measurements_period = 0;
 
 int data_ready_for_transfer_flag = 0;
 
+// TODO: add a switch to control this parameter
+const int USE_DMA_OVER_INTERRUPTS_FOR_ADC = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -100,15 +103,21 @@ uint8_t time_to_transfer_data()
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    if (data_ready_for_transfer_flag == 0)
+    if (USE_DMA_OVER_INTERRUPTS_FOR_ADC)
     {
-        write_next_two_byte_value_into_buffer(HAL_ADC_GetValue(hadc));
     }
-
-    if (time_to_transfer_data())
+    else
     {
-        data_ready_for_transfer_flag = 1;
-        measurements_period = TIM2->CNT;
+        if (data_ready_for_transfer_flag == 0)
+        {
+            write_next_two_byte_value_into_buffer(HAL_ADC_GetValue(hadc));
+        }
+
+        if (time_to_transfer_data())
+        {
+            data_ready_for_transfer_flag = 1;
+            measurements_period = TIM2->CNT;
+        }
     }
 }
 
@@ -149,33 +158,43 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
-    // Timer3 tick every 10 µs - full buffer every 100 ms
-    htim3.Init.Prescaler = 0;
-    htim3.Init.Period = 839;
-
     HAL_TIM_Base_Start(&htim2);
-    HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
     HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
-    HAL_ADC_Start_IT(&hadc1);   // Start ADC Conversion
-  /* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+    if (USE_DMA_OVER_INTERRUPTS_FOR_ADC)
+    {
+    }
+    else
+    {
+        // Timer3 tick every 10 µs - full buffer every 100 ms
+        htim3.Init.Prescaler = 0;
+        htim3.Init.Period = 839;
+
+        HAL_TIM_Base_Start(&htim3); // Start Timer3 (Trigger Source For ADC1)
+        HAL_ADC_Start_IT(&hadc1);   // Start ADC Conversion
+    }
+    /* USER CODE END 2 */
+
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
     while (1)
     {
-        if (data_ready_for_transfer_flag == 1)
+        if (USE_DMA_OVER_INTERRUPTS_FOR_ADC == 0)
         {
-            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
-            write_next_four_byte_value_into_buffer(measurements_period);
-            write_end_sequence_into_buffer();
+            if (data_ready_for_transfer_flag == 1)
+            {
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+                write_next_four_byte_value_into_buffer(measurements_period);
+                write_end_sequence_into_buffer();
 
-            CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+                CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
 
-            buffer_index = 0;
+                buffer_index = 0;
 
-            TIM2->CNT = 0;
-            data_ready_for_transfer_flag = 0;
-            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+                TIM2->CNT = 0;
+                data_ready_for_transfer_flag = 0;
+                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+            }
         }
 
     /* USER CODE END WHILE */
