@@ -42,9 +42,8 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
+#define SAMPLES_PER_DATA_TRANSFER 12000
 #define USB_OUTPUT_BUFFER_SIZE 24100
-
-const uint16_t SAMPLES_PER_DATA_TRANSFER = 12000;
 
 /* USER CODE END PM */
 
@@ -54,7 +53,7 @@ const uint16_t SAMPLES_PER_DATA_TRANSFER = 12000;
 
 uint8_t usb_output_buffer[USB_OUTPUT_BUFFER_SIZE];
 
-uint16_t dma_buffer[2 * USB_OUTPUT_BUFFER_SIZE];
+uint32_t dma_buffer[SAMPLES_PER_DATA_TRANSFER / 2];
 
 volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
@@ -113,15 +112,18 @@ void switchAdcRangeIfNeeded()
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    HAL_ADC_Stop_DMA(&hadc1);
+    HAL_ADC_Stop(&hadc3);
+    HAL_ADC_Stop(&hadc2);
+    HAL_ADCEx_MultiModeStop_DMA(&hadc1);
     switchAdcRangeIfNeeded();
 
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
     measurements_period = TIM2->CNT;
 
-    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; ++sample_idx)
+    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER / 2; ++sample_idx)
     {
-        write_next_two_byte_value_into_buffer(dma_buffer[sample_idx]);
+        write_next_two_byte_value_into_buffer(dma_buffer[sample_idx] & 0xffff);
+        write_next_two_byte_value_into_buffer((dma_buffer[sample_idx] >> 16) & 0xffff);
     }
 
     write_next_four_byte_value_into_buffer(measurements_period);
@@ -132,8 +134,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
     buffer_index = 0;
 
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
-
-    TIM2->CNT = 0;
 }
 
 /* USER CODE END 0 */
@@ -171,6 +171,8 @@ int main(void)
     MX_ADC1_Init();
     MX_TIM2_Init();
     MX_TIM4_Init();
+    MX_ADC2_Init();
+    MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
 
     HAL_TIM_Base_Start(&htim2);
@@ -185,7 +187,9 @@ int main(void)
         HAL_Delay(30);
 
         TIM2->CNT = 0;
-        HAL_ADC_Start_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
+        HAL_ADC_Start(&hadc3);
+        HAL_ADC_Start(&hadc2);
+        HAL_ADCEx_MultiModeStart_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
 
         /* USER CODE END WHILE */
 
