@@ -31,6 +31,9 @@ INTERFACE
     end sequence, consisting of two 0xff values.
     ADC measurement occurs every 10 µs, resulting in sampling frequency of 100 kHz.
 
+2.4 Same as 2.3, but device sends 12000 samples, that is 24000 bytes + 4 bytes of
+    timer value + 2 bytes of end sequence - 24006 bytes total.
+
 OTHER
 
 There is reference square wave generated on G2 and G3 pins, basing on timer 4.

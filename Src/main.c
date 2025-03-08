@@ -42,9 +42,9 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-#define USB_OUTPUT_BUFFER_SIZE 20100
+#define USB_OUTPUT_BUFFER_SIZE 24100
 
-const uint16_t SAMPLES_PER_DATA_TRANSFER = 10000;
+const uint16_t SAMPLES_PER_DATA_TRANSFER = 12000;
 
 /* USER CODE END PM */
 
