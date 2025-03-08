@@ -32,7 +32,8 @@ INTERFACE
     ADC measurement occurs every 10 µs, resulting in sampling frequency of 100 kHz.
 
 2.4 Same as 2.3, but device sends 12000 samples, that is 24000 bytes + 4 bytes of
-    timer value + 2 bytes of end sequence - 24006 bytes total.
+    timer value + 2 bytes of end sequence - 24006 bytes total. Set of measurements
+    and transfer happens once every ~30 ms.
 
 OTHER
 
