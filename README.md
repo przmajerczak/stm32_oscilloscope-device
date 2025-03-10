@@ -35,10 +35,21 @@ INTERFACE
     timer value + 2 bytes of end sequence - 24006 bytes total. Set of measurements
     and transfer happens once every ~30 ms.
 
+3.0
+    The device sends 15000 conversion results (samples) during one transmission.
+    ess significant byte is sent first, followed by more significant one.
+    After all 30000 bytes of results comes 4 bytes of the timer value,
+    arranged least significant byte first. The value represents count of
+    168 MHz timer ticks since the moment of first measurement until
+    the last measurement contained in transmission. That value is followed by
+    end sequence, consisting of one value 0xff or 0xfe (0xff minus channel id -
+    0 for channel 1 and 1 for channel 2) followed by fixed 0xff value.
+    30 ms of delay is applied after burst of two transmissions (one per each channel).
+
 OTHER
 
 There is reference square wave generated on G2 and G3 pins, basing on timer 4.
 G2 frequency is 500 kHz, G3 frequency is 2.5 kHz
-D11 pin sets ADC range mode. Default is high state indicating faster (DMA) mode.
+D11 pin sets ADC range mode. Default is high state indicating faster mode.
 D11 check is done once on initial setup after power up, so change of ADC range mode
 required board restart.
