@@ -53,12 +53,14 @@
 
 uint8_t usb_output_buffer[USB_OUTPUT_BUFFER_SIZE];
 
-uint32_t dma_buffer[SAMPLES_PER_DATA_TRANSFER / 2];
+uint32_t dma_buffer[SAMPLES_PER_DATA_TRANSFER];
+uint32_t adc_data[SAMPLES_PER_DATA_TRANSFER];
 
 volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
 
 int FUTURE_ADC_RANGE_FLAG = 1;
+int new_data_needed_flag = 0;
 
 /* USER CODE END PV */
 
@@ -112,28 +114,17 @@ void switchAdcRangeIfNeeded()
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    HAL_ADC_Stop(&hadc3);
-    HAL_ADC_Stop(&hadc2);
-    HAL_ADCEx_MultiModeStop_DMA(&hadc1);
+    if (new_data_needed_flag == 0)
+    {
+        measurements_period = TIM2->CNT;
+
+        memcpy(adc_data, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
+
+        new_data_needed_flag = 1;
+    }
     switchAdcRangeIfNeeded();
 
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
-    measurements_period = TIM2->CNT;
-
-    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER / 2; ++sample_idx)
-    {
-        write_next_two_byte_value_into_buffer(dma_buffer[sample_idx] & 0xffff);
-        write_next_two_byte_value_into_buffer((dma_buffer[sample_idx] >> 16) & 0xffff);
-    }
-
-    write_next_four_byte_value_into_buffer(measurements_period);
-    write_end_sequence_into_buffer();
-
-    CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
-
-    buffer_index = 0;
-
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+    TIM2->CNT = 0;
 }
 
 /* USER CODE END 0 */
@@ -178,19 +169,41 @@ int main(void)
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
 
+    HAL_ADC_Start(&hadc3);
+    HAL_ADC_Start(&hadc2);
+    HAL_ADCEx_MultiModeStart_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1)
     {
-        HAL_Delay(30);
+        if (new_data_needed_flag == 1)
+        {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+            for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+            {
+                write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
+                write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
 
-        TIM2->CNT = 0;
-        HAL_ADC_Start(&hadc3);
-        HAL_ADC_Start(&hadc2);
-        HAL_ADCEx_MultiModeStart_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
+                write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
+                // write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
 
+                // write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
+                // write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+            }
+
+            write_next_four_byte_value_into_buffer(measurements_period);
+            write_end_sequence_into_buffer();
+
+            CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+
+            buffer_index = 0;
+            HAL_Delay(30);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+            new_data_needed_flag = 0;
+        }
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
