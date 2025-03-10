@@ -59,8 +59,9 @@ uint32_t adc_data[SAMPLES_PER_DATA_TRANSFER];
 volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
 
-int FUTURE_ADC_RANGE_FLAG = 1;
 int new_data_needed_flag = 0;
+
+ADC_ChannelConfTypeDef sConfig = {0};
 
 /* USER CODE END PV */
 
@@ -98,17 +99,35 @@ void write_end_sequence_into_buffer(void)
     write_next_byte_into_buffer(0xff);
 }
 
+void reconfigureAdcSampleTime(const uint32_t adc_sample_time)
+{
+    sConfig.Channel = ADC_CHANNEL_3;
+    sConfig.Rank = 1;
+    sConfig.SamplingTime = adc_sample_time;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+    HAL_ADC_ConfigChannel(&hadc2, &sConfig);
+    HAL_ADC_ConfigChannel(&hadc3, &sConfig);
+
+    sConfig.Channel = ADC_CHANNEL_10;
+    sConfig.Rank = 2;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+    HAL_ADC_ConfigChannel(&hadc2, &sConfig);
+    HAL_ADC_ConfigChannel(&hadc3, &sConfig);
+}
+
 void switchAdcRangeIfNeeded()
 {
-    if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11))
+    if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_SET)
     {
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 1);
-        // FUTURE_ADC_RANGE_FLAG = 1;
+
+        reconfigureAdcSampleTime(ADC_SAMPLETIME_3CYCLES);
     }
     else
     {
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
-        // FUTURE_ADC_RANGE_FLAG = 0;
+
+        reconfigureAdcSampleTime(ADC_SAMPLETIME_144CYCLES);
     }
 }
 
@@ -122,7 +141,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 
         new_data_needed_flag = 1;
     }
-    switchAdcRangeIfNeeded();
 
     TIM2->CNT = 0;
 }
@@ -165,6 +183,8 @@ int main(void)
     MX_ADC2_Init();
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
+
+    switchAdcRangeIfNeeded();
 
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
