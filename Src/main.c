@@ -63,6 +63,9 @@ int new_data_needed_flag = 0;
 
 ADC_ChannelConfTypeDef sConfig = {0};
 
+const uint16_t CHANNEL_1 = 0;
+const uint16_t CHANNEL_2 = 1;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -93,10 +96,12 @@ void write_next_two_byte_value_into_buffer(const uint16_t value)
     write_next_byte_into_buffer((value >> 8) & 0xff);
 }
 
-void write_end_sequence_into_buffer(void)
+void write_end_sequence_into_buffer(const uint16_t channel_id)
 {
+    write_next_byte_into_buffer(0xff - channel_id);
     write_next_byte_into_buffer(0xff);
-    write_next_byte_into_buffer(0xff);
+
+    buffer_index = 0;
 }
 
 void reconfigureAdcSampleTime(const uint32_t adc_sample_time)
@@ -215,11 +220,10 @@ int main(void)
             }
 
             write_next_four_byte_value_into_buffer(measurements_period);
-            write_end_sequence_into_buffer();
+            write_end_sequence_into_buffer(CHANNEL_1);
 
             CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
 
-            buffer_index = 0;
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
             new_data_needed_flag = 0;
