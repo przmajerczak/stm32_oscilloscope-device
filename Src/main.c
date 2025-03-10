@@ -213,14 +213,23 @@ int main(void)
                 write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
 
                 write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
-                // write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
-
-                // write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
-                // write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
             }
 
             write_next_four_byte_value_into_buffer(measurements_period);
             write_end_sequence_into_buffer(CHANNEL_1);
+
+            CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+
+            for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+            {
+                write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
+
+                write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
+                write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+            }
+
+            write_next_four_byte_value_into_buffer(measurements_period);
+            write_end_sequence_into_buffer(CHANNEL_2);
 
             CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
 
