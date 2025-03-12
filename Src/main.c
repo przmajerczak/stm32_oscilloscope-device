@@ -60,6 +60,8 @@ volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
 
 int new_data_needed_flag = 1;
+int channel_1_active_flag = 1;
+int channel_2_active_flag = 1;
 
 ADC_ChannelConfTypeDef sConfig = {0};
 
@@ -96,10 +98,10 @@ void write_next_two_byte_value_into_buffer(const uint16_t value)
     write_next_byte_into_buffer((value >> 8) & 0xff);
 }
 
-void write_end_sequence_into_buffer(const uint16_t channel_id)
+void write_end_sequence_into_buffer(const uint16_t channel_id, const uint16_t number_of_active_channels)
 {
     write_next_byte_into_buffer(0xff - channel_id);
-    write_next_byte_into_buffer(0xff);
+    write_next_byte_into_buffer(0xff - number_of_active_channels);
 }
 
 void reconfigureAdcSampleTime(const uint32_t adc_sample_time)
@@ -206,30 +208,38 @@ int main(void)
         {
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
 
-            for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
-            {
-                write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
-                write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
+            const int number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
 
-                write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
+            if (channel_1_active_flag)
+            {
+                for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                {
+                    write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
+                    write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
+
+                    write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
+                }
+
+                write_next_four_byte_value_into_buffer(measurements_period);
+                write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
             }
 
-            write_next_four_byte_value_into_buffer(measurements_period);
-            write_end_sequence_into_buffer(CHANNEL_1);
-
-            for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+            if (channel_2_active_flag)
             {
-                write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
+                for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                {
+                    write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
 
-                write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
-                write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+                    write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
+                    write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+                }
+
+                write_next_four_byte_value_into_buffer(measurements_period);
+                write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
             }
-
-            write_next_four_byte_value_into_buffer(measurements_period);
-            write_end_sequence_into_buffer(CHANNEL_2);
             buffer_index = 0;
 
-            CDC_Transmit_FS(usb_output_buffer, 2 * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
+            CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
 
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
