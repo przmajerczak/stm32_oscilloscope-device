@@ -208,6 +208,9 @@ int main(void)
         {
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
 
+            channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET) ? 1 : 0;
+            channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_SET) ? 1 : 0;
+
             const int number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
 
             if (channel_1_active_flag)

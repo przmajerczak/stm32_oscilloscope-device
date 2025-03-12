@@ -68,3 +68,6 @@ G2 frequency is 500 kHz, G3 frequency is 2.5 kHz
 D11 pin sets ADC range mode. Default is high state indicating faster mode.
 D11 check is done once on initial setup after power up, so change of ADC range mode
 required board restart.
+
+D12 and D13 pins control (respectively) channel 1 and channel 2 status. High state
+is channel active, with default low, enforced by pull-down resistors.

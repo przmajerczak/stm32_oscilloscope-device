@@ -77,6 +77,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(_ADC_range_select_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PDPin PDPin */
+  GPIO_InitStruct.Pin = _Channel_1_active_Pin|_Channel_2_active_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PGPin PGPin */
   GPIO_InitStruct.Pin = _500_kHz_reference_Pin|_2_5_kHz_reference_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
