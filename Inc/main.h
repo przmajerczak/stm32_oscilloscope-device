@@ -65,10 +65,10 @@ void Error_Handler(void);
 #define LD1_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14
 #define LD3_GPIO_Port GPIOB
-#define _ADC_range_select_Pin GPIO_PIN_11
-#define _ADC_range_select_GPIO_Port GPIOD
-#define _Channel_1_active_Pin GPIO_PIN_12
+#define _Channel_1_active_Pin GPIO_PIN_11
 #define _Channel_1_active_GPIO_Port GPIOD
+#define _ADC_range_select_Pin GPIO_PIN_12
+#define _ADC_range_select_GPIO_Port GPIOD
 #define _Channel_2_active_Pin GPIO_PIN_13
 #define _Channel_2_active_GPIO_Port GPIOD
 #define _500_kHz_reference_Pin GPIO_PIN_2
