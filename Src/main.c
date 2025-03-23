@@ -53,13 +53,12 @@
 
 uint8_t usb_output_buffer[USB_OUTPUT_BUFFER_SIZE];
 
-uint32_t dma_buffer[SAMPLES_PER_DATA_TRANSFER];
 uint32_t adc_data[SAMPLES_PER_DATA_TRANSFER];
 
 volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
 
-int new_data_needed_flag = 1;
+int data_ready = 0;
 int channel_1_active_flag = 1;
 int channel_2_active_flag = 1;
 
@@ -138,16 +137,9 @@ void switchAdcRangeIfNeeded()
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    if (new_data_needed_flag == 1)
-    {
-        measurements_period = TIM2->CNT;
-
-        memcpy(adc_data, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
-
-        new_data_needed_flag = 0;
-    }
-
-    TIM2->CNT = 0;
+    measurements_period = TIM2->CNT;
+    HAL_ADCEx_MultiModeStop_DMA(&hadc1);
+    data_ready = 1;
 }
 
 /* USER CODE END 0 */
@@ -189,14 +181,12 @@ int main(void)
   MX_ADC3_Init();
   /* USER CODE BEGIN 2 */
 
-    switchAdcRangeIfNeeded();
-
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
 
     HAL_ADC_Start(&hadc3);
     HAL_ADC_Start(&hadc2);
-    HAL_ADCEx_MultiModeStart_DMA(&hadc1, dma_buffer, SAMPLES_PER_DATA_TRANSFER);
+    HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_data, SAMPLES_PER_DATA_TRANSFER);
 
   /* USER CODE END 2 */
 
@@ -204,9 +194,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
     while (1)
     {
-        if (new_data_needed_flag == 0)
+        if (data_ready == 1)
         {
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+
+            data_ready = 0;
+
+            HAL_ADC_Stop(&hadc1);
+            HAL_ADC_Stop(&hadc2);
+            HAL_ADC_Stop(&hadc3);
+
+            HAL_ADC_DeInit(&hadc1);
+            HAL_ADC_DeInit(&hadc2);
+            HAL_ADC_DeInit(&hadc3);
 
             channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
             channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
@@ -246,7 +246,18 @@ int main(void)
 
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
-            new_data_needed_flag = 1;
+
+            MX_ADC1_Init();
+            MX_ADC2_Init();
+            MX_ADC3_Init();
+
+            switchAdcRangeIfNeeded();
+
+            HAL_ADC_Start(&hadc3);
+            HAL_ADC_Start(&hadc2);
+            HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_data, SAMPLES_PER_DATA_TRANSFER);
+
+            TIM2->CNT = 0;
         }
     /* USER CODE END WHILE */
 
