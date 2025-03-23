@@ -61,6 +61,7 @@ uint32_t measurements_period = 0;
 int data_ready = 0;
 int channel_1_active_flag = 1;
 int channel_2_active_flag = 1;
+int number_of_active_channels = 0;
 
 ADC_ChannelConfTypeDef sConfig = {0};
 
@@ -184,6 +185,11 @@ int main(void)
     HAL_TIM_Base_Start(&htim2);
     HAL_TIM_Base_Start_IT(&htim4); // Timer4 ticks every 1 us
 
+    channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
+    channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+
+    number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
+
     HAL_ADC_Start(&hadc3);
     HAL_ADC_Start(&hadc2);
     HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_data, SAMPLES_PER_DATA_TRANSFER);
@@ -207,11 +213,6 @@ int main(void)
             HAL_ADC_DeInit(&hadc1);
             HAL_ADC_DeInit(&hadc2);
             HAL_ADC_DeInit(&hadc3);
-
-            channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
-            channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
-
-            const int number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
 
             if (channel_1_active_flag)
             {
@@ -246,6 +247,11 @@ int main(void)
 
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+
+            channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
+            channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+
+            number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
 
             MX_ADC1_Init();
             MX_ADC2_Init();
