@@ -214,37 +214,80 @@ int main(void)
             HAL_ADC_DeInit(&hadc2);
             HAL_ADC_DeInit(&hadc3);
 
-            if (channel_1_active_flag)
+            if (number_of_active_channels == 2)
             {
-                for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                if (channel_1_active_flag)
                 {
-                    write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
-                    write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
+                    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                    {
+                        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
+                        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
 
-                    write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
+                        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
+                    }
+
+                    write_next_four_byte_value_into_buffer(measurements_period);
+                    write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
                 }
 
-                write_next_four_byte_value_into_buffer(measurements_period);
-                write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
-            }
-
-            if (channel_2_active_flag)
-            {
-                for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                if (channel_2_active_flag)
                 {
-                    write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
+                    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                    {
+                        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
 
-                    write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
-                    write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+                        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
+                        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+                    }
+
+                    write_next_four_byte_value_into_buffer(measurements_period);
+                    write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
                 }
+                buffer_index = 0;
 
-                write_next_four_byte_value_into_buffer(measurements_period);
-                write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
+                CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
             }
-            buffer_index = 0;
+            else if (number_of_active_channels == 1)
+            {
 
-            CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
+                if (channel_1_active_flag)
+                {
+                    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                    {
+                        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
+                        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
 
+                        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
+                    }
+
+                    write_next_four_byte_value_into_buffer(measurements_period);
+                    write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
+
+                    buffer_index = 0;
+
+                    CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+                }
+                else if (channel_2_active_flag)
+                {
+                    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+                    {
+                        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
+
+                        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
+                        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+                    }
+
+                    write_next_four_byte_value_into_buffer(measurements_period);
+                    write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
+
+                    buffer_index = 0;
+
+                    CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+                }
+            }
+            else
+            { /*oba kanały wyłączone*/
+            }
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
 
