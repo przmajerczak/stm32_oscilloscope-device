@@ -64,6 +64,7 @@ int channel_2_active_flag = 1;
 int number_of_active_channels = 0;
 
 ADC_ChannelConfTypeDef sConfig = {0};
+uint32_t adc_sample_time = ADC_SAMPLETIME_3CYCLES;
 
 const uint16_t CHANNEL_1 = 0;
 const uint16_t CHANNEL_2 = 1;
@@ -104,35 +105,15 @@ void write_end_sequence_into_buffer(const uint16_t channel_id, const uint16_t nu
     write_next_byte_into_buffer(0xff - number_of_active_channels);
 }
 
-void reconfigureAdcSampleTime(const uint32_t adc_sample_time)
-{
-    sConfig.Channel = ADC_CHANNEL_3;
-    sConfig.Rank = 1;
-    sConfig.SamplingTime = adc_sample_time;
-    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-    HAL_ADC_ConfigChannel(&hadc2, &sConfig);
-    HAL_ADC_ConfigChannel(&hadc3, &sConfig);
-
-    sConfig.Channel = ADC_CHANNEL_10;
-    sConfig.Rank = 2;
-    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-    HAL_ADC_ConfigChannel(&hadc2, &sConfig);
-    HAL_ADC_ConfigChannel(&hadc3, &sConfig);
-}
-
 void switchAdcRangeIfNeeded()
 {
     if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET)
     {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 1);
-
-        reconfigureAdcSampleTime(ADC_SAMPLETIME_3CYCLES);
+        adc_sample_time = ADC_SAMPLETIME_3CYCLES;
     }
     else
     {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
-
-        reconfigureAdcSampleTime(ADC_SAMPLETIME_144CYCLES);
+        adc_sample_time = ADC_SAMPLETIME_144CYCLES;
     }
 }
 
@@ -140,17 +121,30 @@ void configChannels(ADC_HandleTypeDef *hadc)
 {
     ADC_ChannelConfTypeDef sConfig = {0};
 
-    sConfig.Channel = ADC_CHANNEL_3;
-    sConfig.Rank = 1;
-    sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-    HAL_ADC_ConfigChannel(hadc, &sConfig);
+    if (number_of_active_channels == 2)
+    {
+        sConfig.Channel = ADC_CHANNEL_3;
+        sConfig.Rank = 1;
+        sConfig.SamplingTime = adc_sample_time;
+        HAL_ADC_ConfigChannel(hadc, &sConfig);
 
-    sConfig.Channel = ADC_CHANNEL_10;
-    sConfig.Rank = 2;
-    HAL_ADC_ConfigChannel(hadc, &sConfig);
+        sConfig.Channel = ADC_CHANNEL_10;
+        sConfig.Rank = 2;
+        HAL_ADC_ConfigChannel(hadc, &sConfig);
+    }
+    else if (number_of_active_channels == 1)
+    {
+        sConfig.Channel = channel_1_active_flag ? ADC_CHANNEL_3 : ADC_CHANNEL_10;
+        sConfig.Rank = 1;
+        sConfig.SamplingTime = adc_sample_time;
+        HAL_ADC_ConfigChannel(hadc, &sConfig);
+    }
+    else
+    { /* no channel active*/
+    }
 }
 
-void InitADC1(void)
+void InitADC1(const uint32_t number_of_active_channels)
 {
     hadc1.Instance = ADC1;
     hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
@@ -161,7 +155,7 @@ void InitADC1(void)
     hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
     hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
     hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-    hadc1.Init.NbrOfConversion = 2;
+    hadc1.Init.NbrOfConversion = number_of_active_channels;
     hadc1.Init.DMAContinuousRequests = ENABLE;
     hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
     HAL_ADC_Init(&hadc1);
@@ -174,7 +168,7 @@ void InitADC1(void)
 
     configChannels(&hadc1);
 }
-void InitADC2(void)
+void InitADC2(const uint32_t number_of_active_channels)
 {
     hadc2.Instance = ADC2;
     hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
@@ -183,14 +177,14 @@ void InitADC2(void)
     hadc2.Init.ContinuousConvMode = ENABLE;
     hadc2.Init.DiscontinuousConvMode = DISABLE;
     hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-    hadc2.Init.NbrOfConversion = 2;
+    hadc2.Init.NbrOfConversion = number_of_active_channels;
     hadc2.Init.DMAContinuousRequests = DISABLE;
     hadc2.Init.EOCSelection = ADC_EOC_SEQ_CONV;
     HAL_ADC_Init(&hadc2);
 
     configChannels(&hadc2);
 }
-void InitADC3(void)
+void InitADC3(const uint32_t number_of_active_channels)
 {
     hadc3.Instance = ADC3;
     hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
@@ -199,7 +193,7 @@ void InitADC3(void)
     hadc3.Init.ContinuousConvMode = ENABLE;
     hadc3.Init.DiscontinuousConvMode = DISABLE;
     hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-    hadc3.Init.NbrOfConversion = 2;
+    hadc3.Init.NbrOfConversion = number_of_active_channels;
     hadc3.Init.DMAContinuousRequests = DISABLE;
     hadc3.Init.EOCSelection = ADC_EOC_SEQ_CONV;
     HAL_ADC_Init(&hadc3);
@@ -348,11 +342,11 @@ int main(void)
                 number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
             } while (number_of_active_channels == 0);
 
-            InitADC1();
-            InitADC2();
-            InitADC3();
-
             switchAdcRangeIfNeeded();
+
+            InitADC1(number_of_active_channels);
+            InitADC2(number_of_active_channels);
+            InitADC3(number_of_active_channels);
 
             HAL_ADC_Start(&hadc3);
             HAL_ADC_Start(&hadc2);
