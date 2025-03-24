@@ -63,11 +63,6 @@ INTERFACE
 
 OTHER
 
-There is reference square wave generated on G2 and G3 pins, basing on timer 4.
-G2 frequency is 500 kHz, G3 frequency is 2.5 kHz
 D12 pin sets ADC range mode. Default is high state indicating faster mode.
-D12 check is done once on initial setup after power up, so change of ADC range mode
-required board restart.
-
 D11 and D13 pins control (respectively) channel 1 and channel 2 status. Low state
 is channel active, with default high, enforced by pull-up resistors.

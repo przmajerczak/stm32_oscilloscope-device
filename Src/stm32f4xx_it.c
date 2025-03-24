@@ -42,9 +42,6 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 
-const uint16_t G3_PIN_PRESCALER = 200;
-uint16_t G3_pin_counter = 0;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,7 +60,6 @@ extern DMA_HandleTypeDef hdma_adc1;
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
-extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -220,38 +216,6 @@ void ADC_IRQHandler(void)
   /* USER CODE BEGIN ADC_IRQn 1 */
 
   /* USER CODE END ADC_IRQn 1 */
-}
-
-/**
-  * @brief This function handles TIM4 global interrupt.
-  */
-void TIM4_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM4_IRQn 0 */
-
-  // Faster than standard HAL_TIM_IRQHandler
-  __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
-
-  // Toggles every 1 us - period is 2 us, resulting in frequency of 0.5 MHz = 500 kHz
-  HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_2);
-
-  // Toggles every 200 us- period is 400 us, resulting in frequency of 2.5 kHz
-  if (G3_pin_counter >= G3_PIN_PRESCALER - 1)
-  {
-    G3_pin_counter = 0;
-    HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_3);
-  }
-  ++G3_pin_counter;
-
-  // dirty trick to use above __HAL_TIM_CLEAR_IT instead of below HAL_TIM_IRQHandler
-  return;
-
-  /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
-  /* USER CODE BEGIN TIM4_IRQn 1 */
-
-
-  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**

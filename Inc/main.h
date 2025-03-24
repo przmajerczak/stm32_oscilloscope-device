@@ -71,10 +71,6 @@ void Error_Handler(void);
 #define _ADC_range_select_GPIO_Port GPIOD
 #define _Channel_2_active_Pin GPIO_PIN_13
 #define _Channel_2_active_GPIO_Port GPIOD
-#define _500_kHz_reference_Pin GPIO_PIN_2
-#define _500_kHz_reference_GPIO_Port GPIOG
-#define _2_5_kHz_reference_Pin GPIO_PIN_3
-#define _2_5_kHz_reference_GPIO_Port GPIOG
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
