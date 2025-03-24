@@ -136,6 +136,77 @@ void switchAdcRangeIfNeeded()
     }
 }
 
+void configChannels(ADC_HandleTypeDef *hadc)
+{
+    ADC_ChannelConfTypeDef sConfig = {0};
+
+    sConfig.Channel = ADC_CHANNEL_3;
+    sConfig.Rank = 1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+    HAL_ADC_ConfigChannel(hadc, &sConfig);
+
+    sConfig.Channel = ADC_CHANNEL_10;
+    sConfig.Rank = 2;
+    HAL_ADC_ConfigChannel(hadc, &sConfig);
+}
+
+void InitADC1(void)
+{
+    hadc1.Instance = ADC1;
+    hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+    hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+    hadc1.Init.ScanConvMode = ENABLE;
+    hadc1.Init.ContinuousConvMode = ENABLE;
+    hadc1.Init.DiscontinuousConvMode = DISABLE;
+    hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+    hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+    hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    hadc1.Init.NbrOfConversion = 2;
+    hadc1.Init.DMAContinuousRequests = ENABLE;
+    hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+    HAL_ADC_Init(&hadc1);
+
+    ADC_MultiModeTypeDef multimode = {0};
+    multimode.Mode = ADC_TRIPLEMODE_INTERL;
+    multimode.DMAAccessMode = ADC_DMAACCESSMODE_2;
+    multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_5CYCLES;
+    HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode);
+
+    configChannels(&hadc1);
+}
+void InitADC2(void)
+{
+    hadc2.Instance = ADC2;
+    hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+    hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+    hadc2.Init.ScanConvMode = ENABLE;
+    hadc2.Init.ContinuousConvMode = ENABLE;
+    hadc2.Init.DiscontinuousConvMode = DISABLE;
+    hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    hadc2.Init.NbrOfConversion = 2;
+    hadc2.Init.DMAContinuousRequests = DISABLE;
+    hadc2.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+    HAL_ADC_Init(&hadc2);
+
+    configChannels(&hadc2);
+}
+void InitADC3(void)
+{
+    hadc3.Instance = ADC3;
+    hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+    hadc3.Init.Resolution = ADC_RESOLUTION_12B;
+    hadc3.Init.ScanConvMode = ENABLE;
+    hadc3.Init.ContinuousConvMode = ENABLE;
+    hadc3.Init.DiscontinuousConvMode = DISABLE;
+    hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    hadc3.Init.NbrOfConversion = 2;
+    hadc3.Init.DMAContinuousRequests = DISABLE;
+    hadc3.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+    HAL_ADC_Init(&hadc3);
+
+    configChannels(&hadc3);
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     measurements_period = TIM2->CNT;
@@ -277,9 +348,9 @@ int main(void)
                 number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
             } while (number_of_active_channels == 0);
 
-            MX_ADC1_Init();
-            MX_ADC2_Init();
-            MX_ADC3_Init();
+            InitADC1();
+            InitADC2();
+            InitADC3();
 
             switchAdcRangeIfNeeded();
 
