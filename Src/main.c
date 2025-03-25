@@ -105,16 +105,57 @@ void write_end_sequence_into_buffer(const uint16_t channel_id, const uint16_t nu
     write_next_byte_into_buffer(0xff - number_of_active_channels);
 }
 
-void switchAdcRangeIfNeeded()
+void readPinConfiguration()
 {
-    if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET)
+    do
     {
-        adc_sample_time = ADC_SAMPLETIME_3CYCLES;
-    }
-    else
+        adc_sample_time = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET) ? ADC_SAMPLETIME_3CYCLES : ADC_SAMPLETIME_144CYCLES;
+        channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
+        channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+
+        number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
+
+    } while (number_of_active_channels == 0);
+}
+
+void dualChannelMode_writeChannel1ToBuffer()
+{
+    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
     {
-        adc_sample_time = ADC_SAMPLETIME_144CYCLES;
+        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
+        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
+
+        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
     }
+
+    write_next_four_byte_value_into_buffer(measurements_period);
+    write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
+}
+
+void dualChannelMode_writeChannel2ToBuffer()
+{
+    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
+    {
+        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
+
+        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
+        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
+    }
+
+    write_next_four_byte_value_into_buffer(measurements_period);
+    write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
+}
+
+void singleChannelMode_writeOnlyChannelToBuffer(const uint16_t channelId)
+{
+    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER / 2; ++sample_idx)
+    {
+        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
+        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
+    }
+
+    write_next_four_byte_value_into_buffer(measurements_period);
+    write_end_sequence_into_buffer(channelId, number_of_active_channels);
 }
 
 void configChannels(ADC_HandleTypeDef *hadc)
@@ -138,9 +179,6 @@ void configChannels(ADC_HandleTypeDef *hadc)
         sConfig.Rank = 1;
         sConfig.SamplingTime = adc_sample_time;
         HAL_ADC_ConfigChannel(hadc, &sConfig);
-    }
-    else
-    { /* no channel active*/
     }
 }
 
@@ -201,6 +239,28 @@ void InitADC3(const uint32_t number_of_active_channels)
     configChannels(&hadc3);
 }
 
+void startADC(const uint32_t number_of_active_channels)
+{
+    InitADC1(number_of_active_channels);
+    InitADC2(number_of_active_channels);
+    InitADC3(number_of_active_channels);
+
+    HAL_ADC_Start(&hadc3);
+    HAL_ADC_Start(&hadc2);
+    HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_data, number_of_active_channels * SAMPLES_PER_DATA_TRANSFER / 2);
+}
+
+void stopADC()
+{
+    HAL_ADC_Stop(&hadc1);
+    HAL_ADC_Stop(&hadc2);
+    HAL_ADC_Stop(&hadc3);
+
+    HAL_ADC_DeInit(&hadc1);
+    HAL_ADC_DeInit(&hadc2);
+    HAL_ADC_DeInit(&hadc3);
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     measurements_period = TIM2->CNT;
@@ -211,56 +271,51 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
+    /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+    /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+    /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
 
-  /* USER CODE BEGIN Init */
+    /* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+    /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+    /* Configure the system clock */
+    SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+    /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+    /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USB_DEVICE_Init();
-  MX_ADC1_Init();
-  MX_TIM2_Init();
-  MX_ADC2_Init();
-  MX_ADC3_Init();
-  /* USER CODE BEGIN 2 */
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_DMA_Init();
+    MX_USB_DEVICE_Init();
+    MX_ADC1_Init();
+    MX_TIM2_Init();
+    MX_ADC2_Init();
+    MX_ADC3_Init();
+    /* USER CODE BEGIN 2 */
 
     HAL_TIM_Base_Start(&htim2);
 
-    channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
-    channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+    readPinConfiguration();
 
-    number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
+    startADC(number_of_active_channels);
 
-    HAL_ADC_Start(&hadc3);
-    HAL_ADC_Start(&hadc2);
-    HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_data, SAMPLES_PER_DATA_TRANSFER);
+    /* USER CODE END 2 */
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
     while (1)
     {
         if (data_ready == 1)
@@ -269,139 +324,86 @@ int main(void)
 
             data_ready = 0;
 
-            HAL_ADC_Stop(&hadc1);
-            HAL_ADC_Stop(&hadc2);
-            HAL_ADC_Stop(&hadc3);
-
-            HAL_ADC_DeInit(&hadc1);
-            HAL_ADC_DeInit(&hadc2);
-            HAL_ADC_DeInit(&hadc3);
+            stopADC();
 
             if (number_of_active_channels == 2)
             {
                 if (channel_1_active_flag)
                 {
-                    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
-                    {
-                        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
-                        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
-
-                        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
-                    }
-
-                    write_next_four_byte_value_into_buffer(measurements_period);
-                    write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
+                    dualChannelMode_writeChannel1ToBuffer();
                 }
 
                 if (channel_2_active_flag)
                 {
-                    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
-                    {
-                        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
-
-                        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
-                        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
-                    }
-
-                    write_next_four_byte_value_into_buffer(measurements_period);
-                    write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
+                    dualChannelMode_writeChannel2ToBuffer();
                 }
-                buffer_index = 0;
-
-                CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
             }
             else if (number_of_active_channels == 1)
             {
-
-                for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER / 2; ++sample_idx)
-                {
-                    write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
-                    write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
-                }
-
-                write_next_four_byte_value_into_buffer(measurements_period);
-                write_end_sequence_into_buffer(channel_1_active_flag ? CHANNEL_1 : CHANNEL_2, number_of_active_channels);
-
-                buffer_index = 0;
-
-                CDC_Transmit_FS(usb_output_buffer, 2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2);
+                singleChannelMode_writeOnlyChannelToBuffer(channel_1_active_flag ? CHANNEL_1 : CHANNEL_2);
             }
-            else
-            { /*both channels off*/
-            }
+
+            buffer_index = 0;
+            CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
+
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
 
-            do
-            {
-                channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
-                channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+            readPinConfiguration();
 
-                number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
-            } while (number_of_active_channels == 0);
-
-            switchAdcRangeIfNeeded();
-
-            InitADC1(number_of_active_channels);
-            InitADC2(number_of_active_channels);
-            InitADC3(number_of_active_channels);
-
-            HAL_ADC_Start(&hadc3);
-            HAL_ADC_Start(&hadc2);
-            HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_data, number_of_active_channels * SAMPLES_PER_DATA_TRANSFER / 2);
+            startADC(number_of_active_channels);
 
             TIM2->CNT = 0;
         }
-    /* USER CODE END WHILE */
+        /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+        /* USER CODE BEGIN 3 */
     }
-  /* USER CODE END 3 */
+    /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+    /** Configure the main internal regulator output voltage
+     */
+    __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 168;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 7;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    /** Initializes the RCC Oscillators according to the specified parameters
+     * in the RCC_OscInitTypeDef structure.
+     */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM = 4;
+    RCC_OscInitStruct.PLL.PLLN = 168;
+    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+    RCC_OscInitStruct.PLL.PLLQ = 7;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+    {
+        Error_Handler();
+    }
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+    /** Initializes the CPU, AHB and APB buses clocks
+     */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
-  {
-    Error_Handler();
-  }
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+    {
+        Error_Handler();
+    }
 }
 
 /* USER CODE BEGIN 4 */
@@ -409,34 +411,34 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
+    /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1)
     {
     }
-  /* USER CODE END Error_Handler_Debug */
+    /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  /* USER CODE BEGIN 6 */
+    /* USER CODE BEGIN 6 */
     /* User can add his own implementation to report the file name and line
        number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,
        line) */
-  /* USER CODE END 6 */
+    /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
