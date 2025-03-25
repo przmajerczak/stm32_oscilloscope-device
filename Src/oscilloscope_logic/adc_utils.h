@@ -2,6 +2,7 @@
 #define __ADC_UTILS_H__
 
 #include "adc.h"
+#include "defines.h"
 
 void configChannels(ADC_HandleTypeDef *hadc,
                     const uint32_t number_of_active_channels,
