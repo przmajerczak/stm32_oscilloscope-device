@@ -26,7 +26,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "oscilloscope_logic/defines.h"
+#include "oscilloscope_logic/usb_transmission.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,8 +43,6 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-#define SAMPLES_PER_DATA_TRANSFER 15000
-#define USB_OUTPUT_BUFFER_SIZE 60100
 
 /* USER CODE END PM */
 
@@ -51,11 +50,8 @@
 
 /* USER CODE BEGIN PV */
 
-uint8_t usb_output_buffer[USB_OUTPUT_BUFFER_SIZE];
-
 uint32_t adc_data[SAMPLES_PER_DATA_TRANSFER];
 
-volatile uint16_t buffer_index = 0;
 uint32_t measurements_period = 0;
 
 int data_ready = 0;
@@ -65,9 +61,6 @@ int number_of_active_channels = 0;
 
 ADC_ChannelConfTypeDef sConfig = {0};
 uint32_t adc_sample_time = ADC_SAMPLETIME_3CYCLES;
-
-const uint16_t CHANNEL_1 = 0;
-const uint16_t CHANNEL_2 = 1;
 
 /* USER CODE END PV */
 
@@ -80,75 +73,6 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void write_next_byte_into_buffer(const uint16_t byte)
-{
-    usb_output_buffer[buffer_index++] = byte;
-}
-
-void write_next_four_byte_value_into_buffer(const uint32_t value)
-{
-    write_next_byte_into_buffer(value & 0xff);
-    write_next_byte_into_buffer((value >> 8) & 0xff);
-    write_next_byte_into_buffer((value >> 16) & 0xff);
-    write_next_byte_into_buffer((value >> 24) & 0xff);
-}
-
-void write_next_two_byte_value_into_buffer(const uint16_t value)
-{
-    write_next_byte_into_buffer(value & 0xff);
-    write_next_byte_into_buffer((value >> 8) & 0xff);
-}
-
-void write_end_sequence_into_buffer(const uint16_t channel_id, const uint16_t number_of_active_channels)
-{
-    write_next_byte_into_buffer(0xff - channel_id);
-    write_next_byte_into_buffer(0xff - number_of_active_channels);
-}
-
-void reset_buffer_index()
-{
-    buffer_index = 0;
-}
-
-void dualChannelMode_writeChannel1ToBuffer()
-{
-    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
-    {
-        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
-        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
-
-        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 1] & 0xffff);
-    }
-
-    write_next_four_byte_value_into_buffer(measurements_period);
-    write_end_sequence_into_buffer(CHANNEL_1, number_of_active_channels);
-}
-
-void dualChannelMode_writeChannel2ToBuffer()
-{
-    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER; sample_idx += 3)
-    {
-        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 1] >> 16) & 0xffff);
-
-        write_next_two_byte_value_into_buffer(adc_data[sample_idx + 2] & 0xffff);
-        write_next_two_byte_value_into_buffer((adc_data[sample_idx + 2] >> 16) & 0xffff);
-    }
-
-    write_next_four_byte_value_into_buffer(measurements_period);
-    write_end_sequence_into_buffer(CHANNEL_2, number_of_active_channels);
-}
-
-void singleChannelMode_writeOnlyChannelToBuffer(const uint16_t channelId)
-{
-    for (uint16_t sample_idx = 0; sample_idx < SAMPLES_PER_DATA_TRANSFER / 2; ++sample_idx)
-    {
-        write_next_two_byte_value_into_buffer(adc_data[sample_idx] & 0xffff);
-        write_next_two_byte_value_into_buffer((adc_data[sample_idx] >> 16) & 0xffff);
-    }
-
-    write_next_four_byte_value_into_buffer(measurements_period);
-    write_end_sequence_into_buffer(channelId, number_of_active_channels);
-}
 
 void readPinConfiguration()
 {
@@ -335,22 +259,21 @@ int main(void)
             {
                 if (channel_1_active_flag)
                 {
-                    dualChannelMode_writeChannel1ToBuffer();
+                    dualChannelMode_writeChannel1ToBuffer(adc_data, measurements_period);
                 }
 
                 if (channel_2_active_flag)
                 {
-                    dualChannelMode_writeChannel2ToBuffer();
+                    dualChannelMode_writeChannel2ToBuffer(adc_data, measurements_period);
                 }
             }
             else if (number_of_active_channels == 1)
             {
-                singleChannelMode_writeOnlyChannelToBuffer(channel_1_active_flag ? CHANNEL_1 : CHANNEL_2);
+                const uint16_t channelId = channel_1_active_flag ? CHANNEL_1 : CHANNEL_2;
+                singleChannelMode_writeOnlyChannelToBuffer(adc_data, measurements_period, channelId);
             }
 
-            reset_buffer_index();
-
-            CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
+            transmit_data_over_usb(number_of_active_channels);
 
             HAL_Delay(30);
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
