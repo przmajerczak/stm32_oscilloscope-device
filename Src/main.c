@@ -105,17 +105,9 @@ void write_end_sequence_into_buffer(const uint16_t channel_id, const uint16_t nu
     write_next_byte_into_buffer(0xff - number_of_active_channels);
 }
 
-void readPinConfiguration()
+void reset_buffer_index()
 {
-    do
-    {
-        adc_sample_time = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET) ? ADC_SAMPLETIME_3CYCLES : ADC_SAMPLETIME_144CYCLES;
-        channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
-        channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
-
-        number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
-
-    } while (number_of_active_channels == 0);
+    buffer_index = 0;
 }
 
 void dualChannelMode_writeChannel1ToBuffer()
@@ -156,6 +148,19 @@ void singleChannelMode_writeOnlyChannelToBuffer(const uint16_t channelId)
 
     write_next_four_byte_value_into_buffer(measurements_period);
     write_end_sequence_into_buffer(channelId, number_of_active_channels);
+}
+
+void readPinConfiguration()
+{
+    do
+    {
+        adc_sample_time = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET) ? ADC_SAMPLETIME_3CYCLES : ADC_SAMPLETIME_144CYCLES;
+        channel_1_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
+        channel_2_active_flag = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+
+        number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
+
+    } while (number_of_active_channels == 0);
 }
 
 void configChannels(ADC_HandleTypeDef *hadc)
@@ -343,7 +348,8 @@ int main(void)
                 singleChannelMode_writeOnlyChannelToBuffer(channel_1_active_flag ? CHANNEL_1 : CHANNEL_2);
             }
 
-            buffer_index = 0;
+            reset_buffer_index();
+
             CDC_Transmit_FS(usb_output_buffer, number_of_active_channels * (2 * SAMPLES_PER_DATA_TRANSFER + 4 + 2));
 
             HAL_Delay(30);
