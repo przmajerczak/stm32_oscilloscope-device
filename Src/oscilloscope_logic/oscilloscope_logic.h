@@ -40,18 +40,44 @@ void readPinConfiguration()
 
     if (number_of_active_channels == 1)
     {
-        single_channel_mode_active_channel = channel_1_active_flag ? ADC_CHANNEL_3 : ADC_CHANNEL_10;
+        single_channel_mode_active_channel =
+            channel_1_active_flag ? ADC_CHANNEL_3 : ADC_CHANNEL_10;
     }
+}
+
+void decode_adc_data_into_usb_buffer()
+{
+    if (number_of_active_channels == 2)
+    {
+        if (channel_1_active_flag)
+        {
+            dualChannelMode_writeChannel1ToBuffer(adc_data, measurements_period);
+        }
+
+        if (channel_2_active_flag)
+        {
+            dualChannelMode_writeChannel2ToBuffer(adc_data, measurements_period);
+        }
+    }
+    else if (number_of_active_channels == 1)
+    {
+        const uint16_t channelId = channel_1_active_flag ? CHANNEL_1 : CHANNEL_2;
+        singleChannelMode_writeOnlyChannelToBuffer(
+            adc_data, measurements_period, channelId);
+    }
+}
+
+void reconfigure_and_restart_ADC()
+{
+    readPinConfiguration();
+    startADC(adc_data, number_of_active_channels, adc_sample_time,
+             single_channel_mode_active_channel);
 }
 
 void oscilloscope_init()
 {
     HAL_TIM_Base_Start(&htim2);
-
-    readPinConfiguration();
-
-    startADC(adc_data, number_of_active_channels, adc_sample_time,
-             single_channel_mode_active_channel);
+    reconfigure_and_restart_ADC();
 }
 
 void oscilloscope_single_iteration()
@@ -60,39 +86,18 @@ void oscilloscope_single_iteration()
     {
         data_ready = 0;
 
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);        
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
 
         stopADC();
 
-        if (number_of_active_channels == 2)
-        {
-            if (channel_1_active_flag)
-            {
-                dualChannelMode_writeChannel1ToBuffer(adc_data, measurements_period);
-            }
-
-            if (channel_2_active_flag)
-            {
-                dualChannelMode_writeChannel2ToBuffer(adc_data, measurements_period);
-            }
-        }
-        else if (number_of_active_channels == 1)
-        {
-            const uint16_t channelId = channel_1_active_flag ? CHANNEL_1 : CHANNEL_2;
-            singleChannelMode_writeOnlyChannelToBuffer(adc_data, measurements_period,
-                                                       channelId);
-        }
+        decode_adc_data_into_usb_buffer();
 
         transmit_data_over_usb(number_of_active_channels);
 
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
-
         HAL_Delay(70);
 
-        readPinConfiguration();
-
-        startADC(adc_data, number_of_active_channels, adc_sample_time,
-                 single_channel_mode_active_channel);
+        reconfigure_and_restart_ADC();
 
         TIM2->CNT = 0;
     }
