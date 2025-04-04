@@ -41,7 +41,7 @@ void readPinConfiguration()
     if (number_of_active_channels == 1)
     {
         single_channel_mode_active_channel =
-            channel_1_active_flag ? ADC_CHANNEL_3 : ADC_CHANNEL_10;
+            channel_1_active_flag ? ADC_CHANNEL_3 : ADC_CHANNEL_13;
     }
 }
 

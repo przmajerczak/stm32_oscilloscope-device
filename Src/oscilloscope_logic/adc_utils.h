@@ -18,7 +18,7 @@ void configChannels(ADC_HandleTypeDef *hadc,
         sConfig.SamplingTime = adc_sample_time;
         HAL_ADC_ConfigChannel(hadc, &sConfig);
 
-        sConfig.Channel = ADC_CHANNEL_10;
+        sConfig.Channel = ADC_CHANNEL_13;
         sConfig.Rank = 2;
         HAL_ADC_ConfigChannel(hadc, &sConfig);
     }
