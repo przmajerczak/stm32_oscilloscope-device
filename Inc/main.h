@@ -61,14 +61,10 @@ void Error_Handler(void);
 #define USER_Btn_GPIO_Port GPIOC
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
-#define LD1_Pin GPIO_PIN_0
-#define LD1_GPIO_Port GPIOB
-#define LD3_Pin GPIO_PIN_14
-#define LD3_GPIO_Port GPIOB
-#define _Channel_1_active_Pin GPIO_PIN_11
-#define _Channel_1_active_GPIO_Port GPIOD
-#define _ADC_range_select_Pin GPIO_PIN_12
-#define _ADC_range_select_GPIO_Port GPIOD
+#define _USB_transmission_in_progress_Pin GPIO_PIN_5
+#define _USB_transmission_in_progress_GPIO_Port GPIOA
+#define _ADC_range_select_Pin GPIO_PIN_6
+#define _ADC_range_select_GPIO_Port GPIOA
 #define _Channel_2_active_Pin GPIO_PIN_13
 #define _Channel_2_active_GPIO_Port GPIOD
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
@@ -89,8 +85,8 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
-#define LD2_Pin GPIO_PIN_7
-#define LD2_GPIO_Port GPIOB
+#define _Channel_1_active_Pin GPIO_PIN_6
+#define _Channel_1_active_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 

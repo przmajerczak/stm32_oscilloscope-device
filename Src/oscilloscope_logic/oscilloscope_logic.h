@@ -26,11 +26,11 @@ void readPinConfiguration()
 {
     do
     {
-        adc_sample_time = (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12) == GPIO_PIN_SET)
+        adc_sample_time = (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == GPIO_PIN_SET)
                               ? ADC_SAMPLETIME_3CYCLES
                               : ADC_SAMPLETIME_144CYCLES;
         channel_1_active_flag =
-            (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11) == GPIO_PIN_RESET) ? 1 : 0;
+            (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_6) == GPIO_PIN_RESET) ? 1 : 0;
         channel_2_active_flag =
             (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
 
@@ -86,7 +86,7 @@ void oscilloscope_single_iteration()
     {
         data_ready = 0;
 
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
 
         stopADC();
 
@@ -94,7 +94,7 @@ void oscilloscope_single_iteration()
 
         transmit_data_over_usb(number_of_active_channels);
 
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
         HAL_Delay(70);
 
         reconfigure_and_restart_ADC();
