@@ -330,12 +330,16 @@
       "USB-C connector"
     ],
     [
-      "bdcf7d15-1b65-4a77-86ea-212d30088220",
-      "switches"
+      "fffa799d-40e8-49de-8e2f-b666bbbed353",
+      "signal processing1"
     ],
     [
       "2aa23bb9-45cf-4c23-80d2-9cc9d0f9c001",
       "signal processing"
+    ],
+    [
+      "f8621ac5-1e7e-4e87-8c69-5fd403df9470",
+      "ADC speed switch"
     ]
   ],
   "text_variables": {}
