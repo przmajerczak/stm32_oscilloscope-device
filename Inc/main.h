@@ -63,10 +63,8 @@ void Error_Handler(void);
 #define MCO_GPIO_Port GPIOH
 #define _USB_transmission_in_progress_Pin GPIO_PIN_5
 #define _USB_transmission_in_progress_GPIO_Port GPIOA
-#define _ADC_range_select_Pin GPIO_PIN_6
-#define _ADC_range_select_GPIO_Port GPIOA
-#define _Channel_2_active_Pin GPIO_PIN_13
-#define _Channel_2_active_GPIO_Port GPIOD
+#define _ADC_sample_time_select_Pin GPIO_PIN_6
+#define _ADC_sample_time_select_GPIO_Port GPIOA
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
@@ -87,6 +85,8 @@ void Error_Handler(void);
 #define TCK_GPIO_Port GPIOA
 #define _Channel_1_active_Pin GPIO_PIN_6
 #define _Channel_1_active_GPIO_Port GPIOD
+#define _Channel_2_active_Pin GPIO_PIN_7
+#define _Channel_2_active_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 

@@ -64,7 +64,7 @@ INTERFACE
 OTHER
 
 A6 pin sets ADC range mode. Default is high state indicating faster mode.
-D6 and D13 pins control (respectively) channel 1 and channel 2 status. Low state
+D6 and D7 pins control (respectively) channel 1 and channel 2 status. Low state
 is channel active, with default high, enforced by pull-up resistors.
 
 Blue LED connected to PA5 is on during USB transmission. Frequency of blinking

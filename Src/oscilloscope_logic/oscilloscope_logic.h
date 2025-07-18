@@ -32,7 +32,7 @@ void readPinConfiguration()
         channel_1_active_flag =
             (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_6) == GPIO_PIN_RESET) ? 1 : 0;
         channel_2_active_flag =
-            (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13) == GPIO_PIN_RESET) ? 1 : 0;
+            (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_7) == GPIO_PIN_RESET) ? 1 : 0;
 
         number_of_active_channels = channel_1_active_flag + channel_2_active_flag;
 
